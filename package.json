@@ -8,7 +8,9 @@
     "sync": "node scripts/sync.mjs",
     "dev": "wrangler pages dev public",
     "deploy": "wrangler pages deploy public --project-name price-query",
-    "publish": "node scripts/publish.mjs"
+    "publish": "node scripts/publish.mjs",
+    "secrets": "node scripts/sync-secrets.mjs",
+    "secrets:upload": "node scripts/sync-secrets.mjs && bash .gh-secrets-upload.sh"
   },
   "devDependencies": {
     "pinyin-pro": "^3.29.5"

@@ -61,15 +61,62 @@ Cloudflare Pages（纯静态，无后端）
 
 ### 2. Cloudflare
 
-| 项目 | 获取方式 |
-| --- | --- |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 控制台右侧 → Account ID |
-| `CLOUDFLARE_API_TOKEN` | My Profile → API Tokens → Create Token → Edit Cloudflare Workers 模板或自定义 |
+**先说清楚：不需要买服务器。** 本项目是纯静态站（3 个 HTML/CSS/JS + 1 个加密 JSON），
+用Cloudflare Pages 免费托管，官方明确「无限站点、无限请求、无限带宽」，无需绑卡。
 
-API Token 至少需要这些权限：
+免费额度（PagesFree 计划）：
 
-- Account → **Cloudflare Pages** → Edit
-- Account → **Account Settings** → Read
+| 项目 | 免费额度 | 本项目用量 |
+| --- | --- | --- |
+| 静态请求 / 带宽 | **无限** | 每天几十次 |
+| 构建次数 | 500 次/月 | 约 30 次/月（每日刷新） |
+| 并发构建 | 1 | 1 |
+| 站点数 / 自定义域名 | 100 / 100 | 1 / 0 |
+| 单文件上限 | 25 MiB | 最大约 56 KB |
+
+#### 第1 步：注册账号
+
+打开 <https://dash.cloudflare.com/sign-up> 注册，**不需要绑卡**。
+
+#### 第 2 步：取 Account ID
+
+登录后进入控制台，**右侧栏**直接显示 `Account ID`，点旁边的复制按钮。
+也可以在 `My Profile → API Tokens` 页面看到。
+
+填进 `.env`：
+
+```
+CLOUDFLARE_ACCOUNT_ID=粘贴你的 Account ID
+```
+
+#### 第 3 步：创建 API Token
+
+1. 点右上角头像 → **My Profile** → 左侧 **API Tokens** → **Create Token**
+2. 选**Create Custom Token**（模板里没有恰好适配 Pages 的）
+3. 按下表配置权限：
+
+| 权限 | 资源 | 级别 |
+| --- | --- | --- |
+| Cloudflare Pages | Account | **Edit** |
+| Account Settings | Account | **Read** |
+
+4. 再往下找到 **Client IP Address Filtering** 和 **TTL**，**都不用填**，直接
+   **Continue to summary → Create Token**
+5. 弹出的一次性明文 token **立刻复制**（关掉就再也看不到了），填进 `.env`：
+
+```
+CLOUDFLARE_API_TOKEN=粘贴刚生成的 token
+```
+
+#### 第 4 步：无需手动建项目
+
+Pages 项目由CI 自动创建（workflow 里的 `pages project create`，
+失败会被忽略）。首次部署成功后去
+`Workers 和 Pages → price-query` 就能看到 `*.pages.dev` 域名。
+
+> ⚠️ 国内访问 `pages.dev` 可能不稳定。如需国内可访问，把域名挂在
+> **自己的域名**上（Pages 控制台 → Custom domains → 域名前不要带 http），
+> 走Cloudflare CDN 即可；域名若不在 Cloudflare，先把 NS 指向 Cloudflare。
 
 ### 3. GitHub Secrets（走自动部署时必填）
 
@@ -94,6 +141,28 @@ API Token 至少需要这些权限：
 | `CF_PROJECT_NAME` | Cloudflare Pages 项目名，留空则用默认 `price-query` |
 
 > `.env.example` 被有意删除，避免密钥误入库。上面这张表就是它的替代品。
+
+#### 一键从 .env 同步（推荐，省去手工复制）
+
+不用逐个网页粘贴，用 `gh` 命令行同步：
+
+```bash
+npm i -g gh          # 若尚未安装 GitHub CLI
+gh auth login        # 首次需浏览器授权
+npm run secrets      # 校验 .env 并生成上传脚本（不打印明文密钥）
+npm run secrets:upload   # 生成 + 自动执行上传
+```
+
+它按 workflow 的实际需要做键名映射（敏感项进 Secrets，`CF_PROJECT_NAME` 进 Variables），
+并自动跳过 `.env` 中的空值。
+
+两个安全设计：
+
+- 脚本**不打印任何密钥明文**，只显示字符长度
+- 上传脚本临时生成，已加入 `.gitignore`，执行完自动删除
+
+> 注意：`.env` 里 `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` 目前为空，
+> 这两项不会上传，需先去 Cloudflare 控制台取到值再补齐。
 
 ## 部署
 
@@ -149,6 +218,7 @@ npm run dev     # wrangler pages dev public，本地预览
 ├─ scripts/
 │  ├─ sync.mjs              # 主流程：拉数据 → 加密 → 落盘
 │  ├─ publish.mjs           # 本地一键发布
+│  ├─ sync-secrets.mjs      # .env → GitHub Secrets/Variables 同步
 │  └─ lib/
 │     ├─ feishu.mjs         # tenant_access_token + 分页拉取
 │     └─ snapshot.mjs       # 字段归一化 + 拼音 + AES-GCM 加密

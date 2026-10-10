@@ -6,6 +6,9 @@ node_modules/
 .env.*
 .dev.vars
 
+# sync-secrets 生成的临时上传脚本，含明文密钥，用完自动删除
+.gh-secrets-upload.sh
+
 # 数据快照由 CI/本地 sync 生成，不入库（避免密文被离线爆破）
 public/data/
 
@@ -13,3 +16,6 @@ public/data/
 prices-raw.*
 *.ndjson
 *.log
+
+# 本地 agent 工作目录，含会话笔记（可能记录明文凭证），不入库
+.workbuddy/
