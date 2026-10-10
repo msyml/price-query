@@ -12,5 +12,4 @@ public/data/
 # 一次性脚本的中间产物
 prices-raw.*
 *.ndjson
-pinyin-updates-*.json
 *.log
