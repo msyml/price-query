@@ -27,6 +27,7 @@ Cloudflare Pages Functions（functions/，后端在这里）
 
 - **凭证只在服务端**：飞书 App Secret 存在 Pages 项目的环境变量里，浏览器拿不到，也不进仓库。
 - **口令鉴权**：页面访问口令即 API 口令（请求头 `x-passcode`），后端与 `ACCESS_PASSCODE` 比对。
+- **限流**：`functions/_middleware.js` 对所有 `/api/*` 做滑动窗口限流（默认每来源 60 次/分钟），超限返回 `429`。用量低时只用于挡住异常高频请求。
 - **拼音规则统一**：新增/编辑时用 `pinyin-pro` 按「品牌首字母 + 商品名首字母」生成 `拼音简称`，与历史数据完全一致。
 - **旧快照流水线保留**：`scripts/sync.mjs` 仍会生成 `public/data/snapshot.enc.json`（PBKDF2 + AES-256-GCM 加密）作为离线备份，页面已不再使用它。
 - **写权限提醒**：访问口令同时就是写入口令，拿到口令的人都能新增/编辑表格数据。口令一旦外泄，价目表可被篡改；建议改成足够强的口令。
@@ -181,6 +182,13 @@ Functions 在线上运行时，从 **Pages 项目的环境变量**里读飞书�
 
 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_APP_TOKEN`、`FEISHU_TABLE_ID`、`ACCESS_PASSCODE`
 
+可选（不配就用默认值，无需改动）：
+
+| 变量 | 默认 | 说明 |
+| --- | --- | --- |
+| `RATE_LIMIT_MAX` | `60` | 单个来源在窗口内允许的 API 请求数，设为 `0` 关闭限流 |
+| `RATE_LIMIT_WINDOW_MS` | `60000` | 限流窗口长度（毫秒） |
+
 **走 CI 部署时无需手动设置**：`deploy.yml` 会从 GitHub Secrets 生成并写入（`wrangler pages secret bulk`）。
 
 **本地手动设置一次即可**（本机已登录 `wrangler` 或设好 `CLOUDFLARE_API_TOKEN`）：
@@ -250,12 +258,13 @@ ACCESS_PASSCODE=...
 │  ├─ style.css
 │  └─ data/snapshot.enc.json  # 旧流水线产物（不入库，页面已不用）
 ├─ functions/               # Cloudflare Pages Functions（后端）
+│  ├─ _middleware.js        # /api/* 限流（滑动窗口）
 │  ├─ api/records.js        # GET 列表 / POST 新增
 │  ├─ api/records/[id].js   # PUT 编辑
 │  └─ lib/
 │     ├─ feishu.js          # token + 记录/字段读写
 │     ├─ normalize.js       # 字段映射 + 拼音 + 校验
-│     └─ http.js            # 鉴权 + 统一响应
+│     └─ http.js            # 鉴权 + 限流 + 统一响应
 ├─ scripts/                 # 旧的静态快照流水线（备份用）
 │  ├─ sync.mjs              # 拉数据 → 加密 → 落盘
 │  ├─ publish.mjs           # 本地一键发布
