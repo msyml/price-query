@@ -85,7 +85,3 @@ export async function updateRecord(env, recordId, fields) {
   });
   return data.record;
 }
-
-export async function deleteRecord(env, recordId) {
-  await call(env, `${recordsPath(env)}/${recordId}`, { method: 'DELETE' });
-}

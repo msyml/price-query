@@ -8,20 +8,20 @@
 
 ```
 浏览器（输入口令 → 存 sessionStorage → 放进 x-passcode 请求头）
-   │  GET / POST / PUT / DELETE  /api/records
+   │  GET / POST / PUT  /api/records
    ▼
 Cloudflare Pages Functions（functions/，后端在这里）
    │  比对 ACCESS_PASSCODE → 用 App 凭证换 tenant_access_token
    ▼
-飞书多维表格（读取列表 / 新增 / 编辑 / 删除，实时生效）
+飞书多维表格（读取列表 / 新增 / 编辑，实时生效）
 ```
 
 功能：
 
 - **列表页**：搜索（名称 / 拼音 / 条码）+ 品牌 / 分类筛选。
 - **添加**：右上角「+ 添加」，快速填写 4 个必填字段（商品名称、商品品牌、所属分类、零售价），保存时后端自动生成「拼音简称」写回表格。
-- **编辑 / 删除**：每张卡片底部有「编辑」「删除」按钮。
-- **实时**：增删改后立即重新拉取列表，无需「同步」按钮。
+- **编辑**：每张卡片底部有「编辑」按钮。
+- **实时**：新增 / 编辑后立即重新拉取列表，无需「同步」按钮。
 
 设计要点：
 
@@ -29,7 +29,7 @@ Cloudflare Pages Functions（functions/，后端在这里）
 - **口令鉴权**：页面访问口令即 API 口令（请求头 `x-passcode`），后端与 `ACCESS_PASSCODE` 比对。
 - **拼音规则统一**：新增/编辑时用 `pinyin-pro` 按「品牌首字母 + 商品名首字母」生成 `拼音简称`，与历史数据完全一致。
 - **旧快照流水线保留**：`scripts/sync.mjs` 仍会生成 `public/data/snapshot.enc.json`（PBKDF2 + AES-256-GCM 加密）作为离线备份，页面已不再使用它。
-- **写权限提醒**：访问口令同时就是写入口令，拿到口令的人都能新增/编辑/删除表格数据。口令一旦外泄，价目表可被篡改；建议改成足够强的口令。
+- **写权限提醒**：访问口令同时就是写入口令，拿到口令的人都能新增/编辑表格数据。口令一旦外泄，价目表可被篡改；建议改成足够强的口令。
 
 ## 前置准备
 
@@ -45,7 +45,7 @@ Cloudflare Pages Functions（functions/，后端在这里）
 自建应用需要：
 
 1. 在飞书开放平台给应用开通权限 `bitable:app`（**查看、评论、编辑和管理多维表格**）。
-   只给 `bitable:app:readonly` 的话，页面能查但**不能新增/编辑/删除**，写入会报 `91403`。
+   只给 `bitable:app:readonly` 的话，页面能查但**不能新增/编辑**，写入会报 `91403`。
 2. **把应用加为该多维表格的协作者，权限选「可编辑」**（表格右上角「共享」→ 添加应用）。
    只加「可阅读」同样会在写入时报 `91403`。
 3. 权限有变更后，需要在开放平台**创建新版本并发布**；自建应用未发布时调开放接口会失败。
@@ -246,12 +246,12 @@ ACCESS_PASSCODE=...
 ```
 ├─ public/                  # 静态站点根目录，直接被部署
 │  ├─ index.html
-│  ├─ app.js                # 口令解锁 + 列表 / 筛选 + 添加 / 编辑 / 删除
+│  ├─ app.js                # 口令解锁 + 列表 / 筛选 + 添加 / 编辑
 │  ├─ style.css
 │  └─ data/snapshot.enc.json  # 旧流水线产物（不入库，页面已不用）
 ├─ functions/               # Cloudflare Pages Functions（后端）
 │  ├─ api/records.js        # GET 列表 / POST 新增
-│  ├─ api/records/[id].js   # PUT 编辑 / DELETE 删除
+│  ├─ api/records/[id].js   # PUT 编辑
 │  └─ lib/
 │     ├─ feishu.js          # token + 记录/字段读写
 │     ├─ normalize.js       # 字段映射 + 拼音 + 校验
@@ -272,7 +272,7 @@ ACCESS_PASSCODE=...
 | 现象 | 原因 |
 | --- | --- |
 | 打开页面提示「无法加载数据：口令不正确」 | `ACCESS_PASSCODE` 与你输入的口令不一致（线上值在 Pages 项目环境变量里） |
-| 新增/编辑/删除弹「飞书接口错误：91403 Forbidden」 | 飞书应用没有写权限：需开 `bitable:app`（非 readonly）+ 把应用设为多维表格「可编辑」协作者 + 发布新版本 |
+| 新增/编辑弹「飞书接口错误：91403 Forbidden」 | 飞书应用没有写权限：需开 `bitable:app`（非 readonly）+ 把应用设为多维表格「可编辑」协作者 + 发布新版本 |
 | 新增时提示品牌/分类不是合法选项 | 品牌、分类是单选字段，只能选表里已有选项；先去飞书表格给字段加选项 |
 | `获取 tenant_access_token 失败` | App ID/Secret 错，或应用未发布 |
 | 页面能查但列表为空 | 应用没被加为多维表格协作者（读取报 `91403`） |

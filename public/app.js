@@ -206,7 +206,6 @@ function cardHTML(row) {
     ${extras ? `<div class="extras">${extras}</div>` : ''}
     <div class="card-actions">
       <button type="button" class="link" data-act="edit" data-rec="${esc(row.rec)}">编辑</button>
-      <button type="button" class="link danger" data-act="del" data-rec="${esc(row.rec)}">删除</button>
     </div>
   </article>`;
 }
@@ -326,32 +325,14 @@ editorForm.addEventListener('submit', async (event) => {
   }
 });
 
-/* ---------- 列表上的编辑 / 删除 ---------- */
+/* ---------- 列表上的编辑 ---------- */
 
-list.addEventListener('click', async (event) => {
+list.addEventListener('click', (event) => {
   const btn = event.target.closest('button[data-act]');
-  if (!btn) return;
+  if (!btn || btn.dataset.act !== 'edit') return;
 
-  const rec = btn.dataset.rec;
-  const row = rows.find((r) => r.rec === rec);
-
-  if (btn.dataset.act === 'edit') {
-    if (row) openEditor('edit', row);
-    return;
-  }
-
-  if (btn.dataset.act === 'del') {
-    if (!confirm(`确定删除「${row?.n ?? ''}」？飞书表格里的这条记录会一并删除。`)) return;
-    btn.disabled = true;
-    try {
-      await api(`${API}/${encodeURIComponent(rec)}`, { method: 'DELETE' });
-      await fetchData();
-      render();
-    } catch (err) {
-      alert(`删除失败：${err.message}`);
-      btn.disabled = false;
-    }
-  }
+  const row = rows.find((r) => r.rec === btn.dataset.rec);
+  if (row) openEditor('edit', row);
 });
 
 /* ---------- 刷新 ---------- */
