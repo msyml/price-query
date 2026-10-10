@@ -1,5 +1,5 @@
 const API = './api/records';
-const SESSION_KEY = 'price_query_passcode';
+const STORAGE_KEY = 'price_query_passcode';
 
 const el = (id) => document.getElementById(id);
 
@@ -56,6 +56,8 @@ async function api(path, { method = 'GET', body } = {}) {
     /* 非 JSON 响应按空对象处理 */
   }
   if (!res.ok) {
+    // 已解锁状态下收到 401 说明服务端口令已变更，清除缓存并要求重新输入
+    if (res.status === 401 && !app.hidden) relock('访问口令已更新，请重新输入');
     const err = new Error(data.error || `请求失败（${res.status}）`);
     err.status = res.status;
     throw err;
@@ -92,7 +94,7 @@ gateForm.addEventListener('submit', async (event) => {
   passcode = value;
   try {
     await fetchData();
-    sessionStorage.setItem(SESSION_KEY, value);
+    localStorage.setItem(STORAGE_KEY, value);
     gate.hidden = true;
     app.hidden = false;
     render();
@@ -107,15 +109,20 @@ gateForm.addEventListener('submit', async (event) => {
   }
 });
 
-el('lock-btn').addEventListener('click', () => {
-  sessionStorage.removeItem(SESSION_KEY);
+function relock(message = '') {
+  localStorage.removeItem(STORAGE_KEY);
   passcode = '';
   rows = [];
+  closeEditor();
   app.hidden = true;
   gate.hidden = false;
   gateInput.value = '';
+  gateError.textContent = message;
+  gateError.hidden = !message;
   gateInput.focus();
-});
+}
+
+el('lock-btn').addEventListener('click', () => relock());
 
 /* ---------- 筛选 ---------- */
 
@@ -352,10 +359,10 @@ el('refresh-btn').addEventListener('click', async (event) => {
   }
 });
 
-/* ---------- 启动：尝试用会话内口令自动解锁 ---------- */
+/* ---------- 启动：尝试用本地缓存口令自动解锁 ---------- */
 
 (async function boot() {
-  const saved = sessionStorage.getItem(SESSION_KEY);
+  const saved = localStorage.getItem(STORAGE_KEY);
   if (!saved) {
     gateInput.focus();
     return;
@@ -366,8 +373,13 @@ el('refresh-btn').addEventListener('click', async (event) => {
     gate.hidden = true;
     app.hidden = false;
     render();
-  } catch {
-    sessionStorage.removeItem(SESSION_KEY);
+  } catch (err) {
+    // 口令已变更（服务端 401）时清除缓存，需重新输入；其余错误保留缓存以便重试
+    if (err.status === 401) {
+      localStorage.removeItem(STORAGE_KEY);
+      gateError.textContent = '访问口令已更新，请重新输入';
+      gateError.hidden = false;
+    }
     passcode = '';
     gate.hidden = false;
     gateInput.focus();

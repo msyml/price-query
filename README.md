@@ -7,7 +7,7 @@
 页面数据来自飞书多维表格，通过 Cloudflare Pages Functions（`functions/`）**实时读写**，不再依赖构建期快照。
 
 ```
-浏览器（输入口令 → 存 sessionStorage → 放进 x-passcode 请求头）
+浏览器（输入口令 → 存 localStorage → 放进 x-passcode 请求头，口令变更后自动失效）
    │  GET / POST / PUT  /api/records
    ▼
 Cloudflare Pages Functions（functions/，后端在这里）
