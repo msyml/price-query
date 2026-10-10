@@ -27,6 +27,11 @@ jobs:
         with:
           node-version: '20'
 
+      # sync 依赖 pinyin-pro 计算拼音首字母，必须先装依赖
+      # lock 文件解析到国内镜像，Actions runner 在海外会偶发超时，强制走官方源
+      - name: 安装依赖
+        run: npm ci --registry=https://registry.npmjs.org
+
       # 飞书密钥只存在于 GitHub Secrets，不落库、不进 public 仓库
       - name: 拉取价目表并生成加密快照
         env:

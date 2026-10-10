@@ -1,6 +1,7 @@
 import { randomBytes, pbkdf2Sync, createCipheriv } from 'node:crypto';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { pinyin } from 'pinyin-pro';
 
 const PBKDF2_ITERATIONS = 150000;
 const KEY_LENGTH = 32;
@@ -17,17 +18,30 @@ function pickNumber(value) {
   return Number.isFinite(num) ? num : null;
 }
 
+/** 取中文拼音首字母，非中文/符号一律剔除，只保留 a-z0-9 */
+function pinyinInitials(text) {
+  const cleaned = String(text ?? '').replace(/[^\u4e00-\u9fa5A-Za-z0-9]/g, '');
+  if (!cleaned) return '';
+  return pinyin(cleaned, { pattern: 'first', toneType: 'none', type: 'array' })
+    .join('')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
 /** 把飞书记录压成前端使用的最小结构，字段名用短键减小体积 */
 export function normalizeRecords(records) {
   return records
     .map((record) => {
       const f = record.fields ?? record;
+      const brand = pickText(f['商品品牌']);
+      const name = pickText(f['商品名称']);
       return {
-        n: pickText(f['商品名称']),
-        br: pickText(f['商品品牌']),
+        n: name,
+        br: brand,
         c: pickText(f['所属分类']),
         bc: pickText(f['商品条码']),
-        py: pickText(f['拼音简称']),
+        // 搜索用拼音 = 品牌首字母 + 商品名首字母
+        py: pinyinInitials(brand) + pinyinInitials(name),
         w: pickNumber(f['批发价']),
         r: pickNumber(f['零售价']),
         s: pickText(f['散称价']),
