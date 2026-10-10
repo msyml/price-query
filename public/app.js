@@ -1,4 +1,4 @@
-const SNAPSHOT_URL = './data/snapshot.enc.json';
+const API = './api/records';
 const SESSION_KEY = 'price_query_passcode';
 
 const el = (id) => document.getElementById(id);
@@ -19,66 +19,87 @@ const clearBtn = el('clear-btn');
 const brandSelect = el('brand');
 const catSelect = el('cat');
 
+const editor = el('editor');
+const editorForm = el('editor-form');
+const editorTitle = el('editor-title');
+const editorMsg = el('editor-msg');
+const editorSave = el('editor-save');
+const fName = el('f-name');
+const fBrand = el('f-brand');
+const fCat = el('f-cat');
+const fRetail = el('f-retail');
+
+let passcode = '';
+let rows = [];
+let brands = [];
+let categories = [];
 let index = [];
-let snapshotBlob = null;
+let editingId = null;
 
-/* ---------- 解密 ---------- */
+/* ---------- 后端接口（口令放在请求头） ---------- */
 
-const b64ToBytes = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+async function api(path, { method = 'GET', body } = {}) {
+  const res = await fetch(path, {
+    method,
+    headers: {
+      'x-passcode': passcode,
+      ...(body ? { 'Content-Type': 'application/json' } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    cache: 'no-store'
+  });
 
-async function deriveKey(passcode, saltB64, iterations) {
-  const base = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(passcode),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: b64ToBytes(saltB64), iterations, hash: 'SHA-256' },
-    base,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['decrypt']
-  );
-}
-
-async function loadSnapshot() {
-  if (!snapshotBlob) {
-    const res = await fetch(SNAPSHOT_URL, { cache: 'no-store' });
-    if (!res.ok) throw new Error('无法加载数据快照文件');
-    snapshotBlob = await res.json();
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {
+    /* 非 JSON 响应按空对象处理 */
   }
-  return snapshotBlob;
+  if (!res.ok) {
+    const err = new Error(data.error || `请求失败（${res.status}）`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
 }
 
-async function decryptWith(passcode) {
-  const blob = await loadSnapshot();
-  const key = await deriveKey(passcode, blob.salt, blob.iterations);
-  const plain = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: b64ToBytes(blob.iv) },
-    key,
-    b64ToBytes(blob.payload)
-  );
-  return { rows: JSON.parse(new TextDecoder().decode(plain)), meta: blob };
+async function fetchData() {
+  const data = await api(API);
+  rows = data.rows ?? [];
+  brands = data.brands ?? [];
+  categories = data.categories ?? [];
+
+  index = rows.map((row) => ({
+    row,
+    hay: `${row.n} ${row.py} ${row.bc}`.toLowerCase()
+  }));
+
+  el('meta-count').textContent = `共 ${data.count ?? rows.length} 个商品`;
+  el('meta-time').textContent = formatTime(data.generatedAt);
+  fillSelect(brandSelect, '全部品牌', rows.map((r) => r.br));
+  fillSelect(catSelect, '全部分类', rows.map((r) => r.c));
 }
 
 /* ---------- 解锁流程 ---------- */
 
 gateForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const passcode = gateInput.value;
-  if (!passcode) return;
+  const value = gateInput.value;
+  if (!value) return;
 
   gateSubmit.disabled = true;
   gateError.hidden = true;
+  passcode = value;
   try {
-    const { rows, meta } = await decryptWith(passcode);
-    sessionStorage.setItem(SESSION_KEY, passcode);
-    reveal(rows, meta);
+    await fetchData();
+    sessionStorage.setItem(SESSION_KEY, value);
+    gate.hidden = true;
+    app.hidden = false;
+    render();
   } catch (err) {
+    passcode = '';
     gateError.textContent =
-      err instanceof TypeError ? '无法加载数据快照文件' : '口令不正确，请重试';
+      err.status === 401 ? '口令不正确，请重试' : `无法加载数据：${err.message}`;
     gateError.hidden = false;
     gateInput.select();
   } finally {
@@ -88,28 +109,13 @@ gateForm.addEventListener('submit', async (event) => {
 
 el('lock-btn').addEventListener('click', () => {
   sessionStorage.removeItem(SESSION_KEY);
+  passcode = '';
+  rows = [];
   app.hidden = true;
   gate.hidden = false;
   gateInput.value = '';
   gateInput.focus();
 });
-
-function reveal(rows, meta) {
-  index = rows.map((row) => ({
-    row,
-    hay: `${row.n} ${row.py} ${row.bc}`.toLowerCase()
-  }));
-
-  el('meta-count').textContent = `共 ${meta.count} 个商品`;
-  el('meta-time').textContent = formatTime(meta.generatedAt);
-
-  fillSelect(brandSelect, '全部品牌', rows.map((r) => r.br));
-  fillSelect(catSelect, '全部分类', rows.map((r) => r.c));
-
-  gate.hidden = true;
-  app.hidden = false;
-  render();
-}
 
 /* ---------- 筛选 ---------- */
 
@@ -161,19 +167,19 @@ function queryRows() {
 /* ---------- 渲染 ---------- */
 
 function render() {
-  const { rows, exact } = queryRows();
+  const { rows: matched, exact } = queryRows();
 
   exactTag.hidden = !exact;
-  resultCount.textContent = `匹配 ${rows.length} 个商品`;
+  resultCount.textContent = `匹配 ${matched.length} 个商品`;
   clearBtn.hidden = !qInput.value;
 
-  if (!rows.length) {
+  if (!matched.length) {
     list.innerHTML = '';
     empty.hidden = false;
     return;
   }
   empty.hidden = true;
-  list.innerHTML = rows.map(cardHTML).join('');
+  list.innerHTML = matched.map(cardHTML).join('');
 }
 
 function cardHTML(row) {
@@ -198,6 +204,10 @@ function cardHTML(row) {
       <div class="price"><span>零售价</span>${money(row.r)}</div>
     </div>
     ${extras ? `<div class="extras">${extras}</div>` : ''}
+    <div class="card-actions">
+      <button type="button" class="link" data-act="edit" data-rec="${esc(row.rec)}">编辑</button>
+      <button type="button" class="link danger" data-act="del" data-rec="${esc(row.rec)}">删除</button>
+    </div>
   </article>`;
 }
 
@@ -211,15 +221,15 @@ function money(value) {
 
 function formatTime(iso) {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
+  if (Number.isNaN(d.getTime())) return iso ?? '';
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-let renderTimer;
+let renderTimerSet;
 function scheduleRender() {
-  clearTimeout(renderTimer);
-  renderTimer = setTimeout(render, 80);
+  clearTimeout(renderTimerSet);
+  renderTimerSet = setTimeout(render, 80);
 }
 
 qInput.addEventListener('input', scheduleRender);
@@ -239,6 +249,128 @@ el('reset-btn').addEventListener('click', () => {
   render();
 });
 
+/* ---------- 添加 / 编辑弹窗 ---------- */
+
+function fillEditorSelects() {
+  const options = (values, placeholder) =>
+    `<option value="">${placeholder}</option>` +
+    values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  fBrand.innerHTML = options(brands, '请选择品牌');
+  fCat.innerHTML = options(categories, '请选择分类');
+}
+
+function showEditorMsg(text, isError = true) {
+  editorMsg.textContent = text;
+  editorMsg.classList.toggle('error', isError);
+  editorMsg.hidden = !text;
+}
+
+function openEditor(mode, row) {
+  editingId = mode === 'edit' ? row.rec : null;
+  fillEditorSelects();
+  editorTitle.textContent = mode === 'edit' ? '编辑商品' : '添加商品';
+  editorSave.textContent = mode === 'edit' ? '保存' : '添加';
+  editorSave.disabled = false;
+  showEditorMsg('');
+  fName.value = row?.n ?? '';
+  fBrand.value = row?.br ?? '';
+  fCat.value = row?.c ?? '';
+  fRetail.value = row?.r ?? '';
+  editor.hidden = false;
+  fName.focus();
+}
+
+function closeEditor() {
+  editor.hidden = true;
+  editingId = null;
+}
+
+el('add-btn').addEventListener('click', () => openEditor('add'));
+el('editor-cancel').addEventListener('click', closeEditor);
+editor.addEventListener('click', (event) => {
+  if (event.target === editor) closeEditor();
+});
+
+editorForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const payload = {
+    name: fName.value.trim(),
+    brand: fBrand.value,
+    category: fCat.value,
+    retail: fRetail.value
+  };
+
+  if (!payload.name) return showEditorMsg('请填写商品名称');
+  if (!payload.brand) return showEditorMsg('请选择商品品牌');
+  if (!payload.category) return showEditorMsg('请选择所属分类');
+  if (payload.retail === '' || !Number.isFinite(Number(payload.retail)) || Number(payload.retail) < 0) {
+    return showEditorMsg('请填写有效的零售价');
+  }
+
+  editorSave.disabled = true;
+  showEditorMsg(editingId ? '保存中…' : '添加中…', false);
+
+  try {
+    if (editingId) {
+      await api(`${API}/${encodeURIComponent(editingId)}`, { method: 'PUT', body: payload });
+    } else {
+      await api(API, { method: 'POST', body: payload });
+    }
+    closeEditor();
+    await fetchData();
+    render();
+  } catch (err) {
+    showEditorMsg(err.message);
+    editorSave.disabled = false;
+  }
+});
+
+/* ---------- 列表上的编辑 / 删除 ---------- */
+
+list.addEventListener('click', async (event) => {
+  const btn = event.target.closest('button[data-act]');
+  if (!btn) return;
+
+  const rec = btn.dataset.rec;
+  const row = rows.find((r) => r.rec === rec);
+
+  if (btn.dataset.act === 'edit') {
+    if (row) openEditor('edit', row);
+    return;
+  }
+
+  if (btn.dataset.act === 'del') {
+    if (!confirm(`确定删除「${row?.n ?? ''}」？飞书表格里的这条记录会一并删除。`)) return;
+    btn.disabled = true;
+    try {
+      await api(`${API}/${encodeURIComponent(rec)}`, { method: 'DELETE' });
+      await fetchData();
+      render();
+    } catch (err) {
+      alert(`删除失败：${err.message}`);
+      btn.disabled = false;
+    }
+  }
+});
+
+/* ---------- 刷新 ---------- */
+
+el('refresh-btn').addEventListener('click', async (event) => {
+  const btn = event.currentTarget;
+  btn.disabled = true;
+  btn.textContent = '刷新中…';
+  try {
+    await fetchData();
+    render();
+  } catch (err) {
+    alert(`刷新失败：${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '刷新';
+  }
+});
+
 /* ---------- 启动：尝试用会话内口令自动解锁 ---------- */
 
 (async function boot() {
@@ -247,11 +379,16 @@ el('reset-btn').addEventListener('click', () => {
     gateInput.focus();
     return;
   }
+  passcode = saved;
   try {
-    const { rows, meta } = await decryptWith(saved);
-    reveal(rows, meta);
+    await fetchData();
+    gate.hidden = true;
+    app.hidden = false;
+    render();
   } catch {
     sessionStorage.removeItem(SESSION_KEY);
+    passcode = '';
+    gate.hidden = false;
     gateInput.focus();
   }
 })();

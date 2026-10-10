@@ -9,6 +9,9 @@ node_modules/
 # sync-secrets 生成的临时上传脚本，含明文密钥，用完自动删除
 .gh-secrets-upload.sh
 
+# CI 临时生成的 Pages 环境变量文件，含明文密钥
+.pages-secrets.json
+
 # 数据快照由 CI/本地 sync 生成，不入库（避免密文被离线爆破）
 public/data/
 

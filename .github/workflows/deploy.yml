@@ -51,6 +51,29 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages project create ${{ vars.CF_PROJECT_NAME || 'price-query' }} --production-branch=main
 
+      # Functions 在运行时需要飞书凭证与访问口令，写入 Pages 项目的环境变量
+      # 用 node 生成 JSON，避免密钥里的特殊字符破坏文件格式
+      - name: 生成 Functions 环境变量文件
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_APP_TOKEN: ${{ secrets.FEISHU_APP_TOKEN }}
+          FEISHU_TABLE_ID: ${{ secrets.FEISHU_TABLE_ID }}
+          ACCESS_PASSCODE: ${{ secrets.ACCESS_PASSCODE }}
+        run: |
+          node -e "require('fs').writeFileSync('.pages-secrets.json', JSON.stringify({ FEISHU_APP_ID: process.env.FEISHU_APP_ID, FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET, FEISHU_APP_TOKEN: process.env.FEISHU_APP_TOKEN, FEISHU_TABLE_ID: process.env.FEISHU_TABLE_ID, ACCESS_PASSCODE: process.env.ACCESS_PASSCODE }))"
+
+      - name: 写入 Pages 项目环境变量
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages secret bulk .pages-secrets.json --project-name=${{ vars.CF_PROJECT_NAME || 'price-query' }}
+
+      - name: 清理临时密钥文件
+        if: always()
+        run: rm -f .pages-secrets.json
+
       - name: 部署到 Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
