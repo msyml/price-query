@@ -1,0 +1,17 @@
+node_modules/
+.wrangler/
+
+# 本地密钥，绝不提交
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# 数据快照由 CI/本地 sync 生成，不入库（避免密文被离线爆破）
+public/data/
+
+# 一次性脚本的中间产物
+prices-raw.*
+*.ndjson
+pinyin-updates-*.json
+*.log

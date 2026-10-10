@@ -1,0 +1,271 @@
+:root {
+  --bg: #f2f3f5;
+  --card: #ffffff;
+  --border: #e6e8eb;
+  --text: #1f2329;
+  --muted: #8a9099;
+  --accent: #3370ff;
+  --accent-weak: #eaf1ff;
+  --danger: #d83931;
+  --radius: 14px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+/* 让 hidden 属性优先于组件的 display 声明 */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+button { font: inherit; cursor: pointer; color: inherit; }
+input, select { font: inherit; color: inherit; }
+
+/* ---------- 口令解锁 ---------- */
+.gate {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  padding-top: calc(24px + var(--safe-top));
+  background: var(--bg);
+  z-index: 10;
+}
+
+.gate-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 28px 22px;
+  box-shadow: 0 8px 30px rgba(31, 35, 41, .08);
+  text-align: center;
+}
+.gate-card h1 { margin: 0 0 6px; font-size: 19px; }
+.gate-sub { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+
+.gate-card input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fafbfc;
+  outline: none;
+  text-align: center;
+}
+.gate-card input:focus { border-color: var(--accent); background: #fff; }
+
+.gate-card button {
+  width: 100%;
+  height: 46px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+}
+.gate-card button:active { opacity: .85; }
+.gate-card button:disabled { opacity: .6; }
+
+.gate-error { margin: 12px 0 0; color: var(--danger); font-size: 13px; }
+
+/* ---------- 骨架 ---------- */
+.shell {
+  max-width: 600px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: calc(24px + var(--safe-bottom));
+}
+
+/* ---------- 顶栏 + 筛选（吸顶） ---------- */
+.bar,
+.filters {
+  background: var(--bg);
+}
+
+.bar {
+  padding: calc(14px + var(--safe-top)) 16px 0;
+}
+.bar-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bar-row h1 { margin: 0; font-size: 17px; }
+.meta { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
+.meta .dot { margin: 0 4px; }
+
+.ghost {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 13px;
+}
+.ghost:active { color: var(--accent); border-color: var(--accent); }
+
+.filters {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.search input {
+  width: 100%;
+  height: 46px;
+  padding: 0 42px 0 38px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  outline: none;
+  font-size: 16px; /* 避免 iOS 聚焦时自动放大 */
+}
+.search input:focus { border-color: var(--accent); }
+.search input::-webkit-search-cancel-button { display: none; }
+
+.clear {
+  position: absolute;
+  right: 6px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.selects { display: flex; gap: 10px; margin-top: 10px; }
+.selects select {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 30px 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%238a9099' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 12px center;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
+.selects select:focus { border-color: var(--accent); }
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.status .link {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  padding: 4px 2px;
+}
+.tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-weak);
+  color: var(--accent);
+  font-size: 12px;
+}
+
+/* ---------- 商品卡片列表 ---------- */
+.list {
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px 0;
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: 0 1px 2px rgba(31, 35, 41, .04);
+}
+
+.card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.name { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.3; }
+
+.badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; flex-shrink: 0; }
+.badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.badge.brand { background: var(--accent-weak); color: var(--accent); }
+.badge.cat { background: #f0f1f3; color: #5c6570; }
+
+.barcode {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  letter-spacing: .3px;
+}
+
+.prices {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.price {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #fafbfc;
+}
+.price span { color: var(--muted); font-size: 12.5px; }
+.price strong { font-size: 17px; font-variant-numeric: tabular-nums; }
+.price strong.miss { color: var(--muted); font-weight: 400; }
+
+.extras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.extras i { font-style: normal; margin-right: 6px; }
+.extras b { color: var(--text); font-weight: 500; }
+
+.empty { margin: 40px 0; text-align: center; color: var(--muted); }

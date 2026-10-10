@@ -1,0 +1,16 @@
+{
+  "name": "price-query",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "价目表查询站点：飞书多维表格快照 + Cloudflare Pages",
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "dev": "wrangler pages dev public",
+    "deploy": "wrangler pages deploy public --project-name price-query",
+    "publish": "node scripts/publish.mjs"
+  },
+  "devDependencies": {
+    "pinyin-pro": "^3.29.5"
+  }
+}
