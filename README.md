@@ -83,7 +83,7 @@ Cloudflare Pages Functions（functions/，后端在这里）
 | 项目 | 免费额度 | 本项目用量 |
 | --- | --- | --- |
 | 静态请求 / 带宽 | **无限** | 每天几十次 |
-| 构建次数 | 500 次/月 | 约 30 次/月（每日刷新） |
+| 构建次数 | 500 次/月 | 仅代码推送时触发，个位数 |
 | 并发构建 | 1 | 1 |
 | 站点数 / 自定义域名 | 100 / 100 | 1 / 0 |
 | 单文件上限 | 25 MiB | 最大约 56 KB |
@@ -220,13 +220,14 @@ npm run pages:secrets    # 把 .dev.vars 里的 5 个键批量写入 Pages 项�
 
 ### 方式A：GitHub Actions（推荐）
 
-已配置好的工作流 `.github/workflows/deploy.yml`，三种触发方式：
+已配置好的工作流 `.github/workflows/deploy.yml`，两种触发方式：
 
 | 触发 | 说明 |
 | --- | --- |
 | `push` 到 `main` | 代码改动后自动部署 |
-| `schedule` | 每天 UTC 22:00（北京 06:00）自动刷新价目数据 |
 | `workflow_dispatch` | 手动触发，Actions 页面点「Run workflow」 |
+
+> 页面数据是后端实时读飞书的，不依赖构建，因此**没有定时构建**（旧的每日刷新任务已移除，避免无谓消耗构建额度）。
 
 流程：检出代码 → 装依赖 → `npm run sync` 生成加密快照（旧流水线，备份用）→ 确保 Pages 项目存在 → 写入 Pages 环境变量 → 部署（含 `functions/`）。
 

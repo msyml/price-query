@@ -3,9 +3,6 @@ name: Build & Deploy
 on:
   push:
     branches: [main]
-  schedule:
-    # 每天 06:00 (北京时间) 自动刷新一次价目数据
-    - cron: '0 22 * * *'
   workflow_dispatch:
 
 permissions:
