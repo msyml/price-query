@@ -67,17 +67,29 @@ export async function listRecords(env) {
   return items;
 }
 
-/** 分页读取字段定义，用于取「单选」字段的可选值（字段数超出一页时同样翻页） */
+/**
+ * 分页读取字段定义，用于取「单选」字段的可选值。
+ *
+ * ⚠️ 不能用 page_token 判空来收尾：`/fields` 与 `/records` 的分页契约不同——
+ * 字段拉完最后一页后，`page_token` **仍然返回一个非空值**（实测 `fld...`，且
+ * `has_more=false`），把它回传只会拿到 `items: undefined`，且 page_token 永远不变。
+ * 照搬 listRecords 的 `while (pageToken)` 写法会变成死循环（本地表现为请求永久挂起）。
+ * 因此这里只认 `has_more` 作为继续翻页的依据。
+ */
 export async function listFields(env) {
   const items = [];
   let pageToken = '';
-  do {
+  for (;;) {
     const data = await call(env, fieldsPath(env), {
       query: { page_size: 100, page_token: pageToken }
     });
     items.push(...(data.items ?? []));
-    pageToken = data.page_token ?? '';
-  } while (pageToken);
+    if (!data.has_more) break;
+    const next = data.page_token;
+    // 兜底：拿不到前进的 token 也必须停，避免任何形式的不收敛
+    if (!next || next === pageToken) break;
+    pageToken = next;
+  }
   return items;
 }
 

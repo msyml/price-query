@@ -6,15 +6,14 @@
   "description": "价目表查询站点：飞书多维表格 + Cloudflare Pages Functions 实时读写",
   "scripts": {
     "sync": "node scripts/sync.mjs",
-    "dev": "wrangler pages dev public",
-    "deploy": "wrangler pages deploy public --project-name=price-query",
+    "dev": "npx --yes wrangler pages dev public",
+    "deploy": "npx --yes wrangler pages deploy public --project-name=price-query",
     "publish": "node scripts/publish.mjs",
-    "pages:secrets": "wrangler pages secret bulk .dev.vars --project-name=price-query",
+    "pages:secrets": "npx --yes wrangler pages secret bulk .dev.vars --project-name=price-query",
     "secrets": "node scripts/sync-secrets.mjs",
     "secrets:upload": "node scripts/sync-secrets.mjs && bash .gh-secrets-upload.sh"
   },
   "devDependencies": {
-    "pinyin-pro": "^3.29.5",
-    "wrangler": "^4.0.0"
+    "pinyin-pro": "^3.29.5"
   }
 }

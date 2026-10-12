@@ -258,6 +258,18 @@ npm install
 npm run dev     # wrangler pages dev public，本地预览（同时起 functions）
 ```
 
+> **wrangler 为什么不在 `devDependencies` 里**
+> 它由 `npx` 按需拉取（`dev` / `deploy` / `pages:secrets` 三个脚本都是 `npx --yes wrangler …`）。
+> 原因有两条：
+> 1. **CI 不需要它**——`deploy.yml` 用的是 `cloudflare/wrangler-action@v3`，自带 wrangler，
+>    workflow 里只跑 `npm ci` 和 `npm run sync`，从不调用本地 wrangler 命令。
+> 2. **装了反而有害**——wrangler 会带进 90 多个包，含 `workerd`（五个平台的二进制）
+>    和约 25 个 esbuild 平台包，每次 CI 都要白装一遍；
+>    而且一旦写进 `package.json` 就必须同步 `package-lock.json`，
+>    否则 `npm ci` 会直接以 `EUSAGE: Missing: wrangler@… from lock file` 失败。
+>
+> 所以本地直接 `npm run dev` 即可，首次会自动下载 wrangler；CI 侧完全不受影响。
+
 本地起 Functions 需要 `.dev.vars`（已被 `.gitignore`，格式同 `.env`）：
 
 ```
