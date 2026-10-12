@@ -76,8 +76,10 @@
       </label>
 
       <label class="field">
-        <span>商品品牌 <i>*</i></span>
-        <select id="f-brand" required></select>
+        <span>商品品牌</span>
+        <input id="f-brand" type="text" list="brand-options" maxlength="40"
+               placeholder="输入关键词搜索，或直接输入新品牌" autocomplete="off">
+        <datalist id="brand-options"></datalist>
       </label>
 
       <label class="field">
@@ -90,7 +92,7 @@
         <input id="f-retail" type="number" step="0.01" min="0" inputmode="decimal" placeholder="如：2.5" required>
       </label>
 
-      <p class="hint">拼音简称在保存时自动生成。</p>
+      <p class="hint">品牌可留空；输入表里没有的新品牌会自动在飞书表中新建选项。拼音简称保存时自动生成。</p>
       <p id="editor-msg" class="form-msg" hidden></p>
 
       <div class="panel-actions">

@@ -4,7 +4,7 @@ import { toRow, toFields, validateInput, selectOptions, FIELD } from '../lib/nor
 import { json, authorize, readJson, handleError } from '../lib/http.js';
 
 export async function onRequestGet({ request, env }) {
-  if (!authorize(request, env)) return json({ error: '口令不正确' }, 401);
+  if (!(await authorize(request, env))) return json({ error: '口令不正确' }, 401);
   try {
     const [records, fields] = await Promise.all([listRecords(env), listFields(env)]);
     const rows = records.map(toRow).filter((row) => row.n);
@@ -21,7 +21,7 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  if (!authorize(request, env)) return json({ error: '口令不正确' }, 401);
+  if (!(await authorize(request, env))) return json({ error: '口令不正确' }, 401);
   try {
     const payload = validateInput(await readJson(request));
     const record = await createRecord(env, toFields(payload));

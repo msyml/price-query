@@ -18,8 +18,25 @@ export const json = (data, status = 200) =>
   });
 
 /** 校验请求头里的口令，与 Pages 环境变量 ACCESS_PASSCODE 比对（定时比较） */
-export function authorize(request, env) {
-  const expected = env.ACCESS_PASSCODE;
+
+/**
+ * 取当前生效的访问口令。
+ *
+ * 优先读 Cloudflare KV（绑定名 CONFIG、键 passcode）：可在控制台远程改值，即时生效、无需重新部署；
+ * 未绑定 KV、键为空或读取失败时，回退到 Pages 环境变量 ACCESS_PASSCODE。
+ */
+export async function currentPasscode(env) {
+  try {
+    const fromKv = await env?.CONFIG?.get?.('passcode');
+    if (fromKv) return fromKv;
+  } catch (err) {
+    console.error('读取 KV 口令失败，回退到 ACCESS_PASSCODE:', err);
+  }
+  return env?.ACCESS_PASSCODE ?? '';
+}
+
+export async function authorize(request, env) {
+  const expected = await currentPasscode(env);
   if (!expected) return false;
   const got = request.headers.get('x-passcode') ?? '';
   if (got.length !== expected.length) return false;

@@ -60,7 +60,7 @@ export function toRow(record) {
   };
 }
 
-/** 校验并规整新增/编辑的入参，四个字段必填 */
+/** 校验并规整新增/编辑的入参；商品名称、所属分类、零售价必填，品牌可留空 */
 export function validateInput(body) {
   const name = String(body.name ?? '').trim();
   const brand = String(body.brand ?? '').trim();
@@ -68,7 +68,6 @@ export function validateInput(body) {
   const retailRaw = body.retail;
 
   if (!name) throw new HttpError('商品名称不能为空', 400);
-  if (!brand) throw new HttpError('商品品牌不能为空', 400);
   if (!category) throw new HttpError('所属分类不能为空', 400);
   if (retailRaw === '' || retailRaw == null) throw new HttpError('零售价不能为空', 400);
 
@@ -80,14 +79,17 @@ export function validateInput(body) {
   return { name, brand, category, retail };
 }
 
-/** 入参 -> 飞书 fields（零售价为数字字段，品牌/分类为单选字段） */
-export const toFields = ({ name, brand, category, retail }) => ({
-  [FIELD.name]: name,
-  [FIELD.brand]: brand,
-  [FIELD.category]: category,
-  [FIELD.retail]: retail,
-  [FIELD.pinyin]: makePinyin(brand, name)
-});
+/** 入参 -> 飞书 fields（零售价为数字字段，分类为单选字段）；品牌为空时不写该字段 */
+export const toFields = ({ name, brand, category, retail }) => {
+  const fields = {
+    [FIELD.name]: name,
+    [FIELD.category]: category,
+    [FIELD.retail]: retail,
+    [FIELD.pinyin]: makePinyin(brand, name)
+  };
+  if (brand) fields[FIELD.brand] = brand;
+  return fields;
+};
 
 /** 从字段定义里取出某个单选字段的可选值 */
 export function selectOptions(fields, fieldName) {

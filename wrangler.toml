@@ -1,3 +1,10 @@
 name = "price-query"
 compatibility_date = "2026-10-01"
 pages_build_output_dir = "public"
+
+# 访问口令托管在 Cloudflare KV：绑定名 CONFIG、键 passcode
+# 改口令只需在控制台编辑该 KV 里的 passcode 值，即时生效，无需重新部署
+# 键为空或读取失败时，后端回退到 Pages 环境变量 ACCESS_PASSCODE（functions/lib/http.js）
+[[kv_namespaces]]
+binding = "CONFIG"
+id = "05bb8902cd324118a8ae3be7063aedd5"

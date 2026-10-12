@@ -26,6 +26,7 @@ const editorMsg = el('editor-msg');
 const editorSave = el('editor-save');
 const fName = el('f-name');
 const fBrand = el('f-brand');
+const brandList = el('brand-options');
 const fCat = el('f-cat');
 const fRetail = el('f-retail');
 
@@ -202,18 +203,19 @@ function cardHTML(row) {
 
   return `<article class="card">
     <div class="card-top">
-      <h2 class="name">${esc(row.n)}</h2>
-      ${badges ? `<div class="badges">${badges}</div>` : ''}
+      <div class="card-head">
+        <h2 class="name">${esc(row.n)}</h2>
+        ${badges ? `<div class="badges">${badges}</div>` : ''}
+      </div>
+      <button type="button" class="edit-btn" data-act="edit" data-rec="${esc(row.rec)}" aria-label="编辑商品">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+      </button>
     </div>
-    ${row.bc ? `<p class="barcode">${esc(row.bc)}</p>` : ''}
     <div class="prices">
+      <div class="price main"><span>零售价</span>${money(row.r)}</div>
       <div class="price"><span>批发价</span>${money(row.w)}</div>
-      <div class="price"><span>零售价</span>${money(row.r)}</div>
     </div>
     ${extras ? `<div class="extras">${extras}</div>` : ''}
-    <div class="card-actions">
-      <button type="button" class="link" data-act="edit" data-rec="${esc(row.rec)}">编辑</button>
-    </div>
   </article>`;
 }
 
@@ -258,11 +260,11 @@ el('reset-btn').addEventListener('click', () => {
 /* ---------- 添加 / 编辑弹窗 ---------- */
 
 function fillEditorSelects() {
-  const options = (values, placeholder) =>
-    `<option value="">${placeholder}</option>` +
-    values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
-  fBrand.innerHTML = options(brands, '请选择品牌');
-  fCat.innerHTML = options(categories, '请选择分类');
+  // 品牌用 datalist 提供关键词联想，同时允许直接输入新品牌（保存时由飞书自动新建选项）
+  brandList.innerHTML = brands.map((v) => `<option value="${esc(v)}"></option>`).join('');
+  fCat.innerHTML =
+    `<option value="">请选择分类</option>` +
+    categories.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
 }
 
 function showEditorMsg(text, isError = true) {
@@ -302,13 +304,12 @@ editorForm.addEventListener('submit', async (event) => {
 
   const payload = {
     name: fName.value.trim(),
-    brand: fBrand.value,
+    brand: fBrand.value.trim(),
     category: fCat.value,
     retail: fRetail.value
   };
 
   if (!payload.name) return showEditorMsg('请填写商品名称');
-  if (!payload.brand) return showEditorMsg('请选择商品品牌');
   if (!payload.category) return showEditorMsg('请选择所属分类');
   if (payload.retail === '' || !Number.isFinite(Number(payload.retail)) || Number(payload.retail) < 0) {
     return showEditorMsg('请填写有效的零售价');
