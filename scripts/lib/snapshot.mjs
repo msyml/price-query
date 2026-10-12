@@ -1,55 +1,18 @@
 import { randomBytes, pbkdf2Sync, createCipheriv } from 'node:crypto';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { pinyin } from 'pinyin-pro';
+
+// 字段映射/拼音/数值归一化与 Functions 侧共用同一份实现（shared/pricing.js），
+// 这里不再重复定义，避免两边规则漂移导致快照与线上数据不一致。
+//
+// 注意一处刻意的行为差异：旧实现每次都用品牌+商品名现算 py，且不带 rec 字段；
+// 现在复用 toRow，py 优先取表格里已存的「拼音简称」（缺失才回退计算），并带上 rec。
+// 这与页面接口返回的行结构一致，快照反而更贴近线上数据。
+// 快照仅供离线备份、页面已不读取，因此该收敛是安全的。
+export { normalizeRecords } from '../../shared/pricing.js';
 
 const PBKDF2_ITERATIONS = 150000;
 const KEY_LENGTH = 32;
-
-function pickText(value) {
-  if (value == null) return '';
-  if (Array.isArray(value)) return value.length ? String(value[0]).trim() : '';
-  return String(value).trim();
-}
-
-function pickNumber(value) {
-  if (value == null || value === '') return null;
-  const num = Number(value);
-  return Number.isFinite(num) ? num : null;
-}
-
-/** 取中文拼音首字母，非中文/符号一律剔除，只保留 a-z0-9 */
-function pinyinInitials(text) {
-  const cleaned = String(text ?? '').replace(/[^\u4e00-\u9fa5A-Za-z0-9]/g, '');
-  if (!cleaned) return '';
-  return pinyin(cleaned, { pattern: 'first', toneType: 'none', type: 'array' })
-    .join('')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-}
-
-/** 把飞书记录压成前端使用的最小结构，字段名用短键减小体积 */
-export function normalizeRecords(records) {
-  return records
-    .map((record) => {
-      const f = record.fields ?? record;
-      const brand = pickText(f['商品品牌']);
-      const name = pickText(f['商品名称']);
-      return {
-        n: name,
-        br: brand,
-        c: pickText(f['所属分类']),
-        bc: pickText(f['商品条码']),
-        // 搜索用拼音 = 品牌首字母 + 商品名首字母
-        py: pinyinInitials(brand) + pinyinInitials(name),
-        w: pickNumber(f['批发价']),
-        r: pickNumber(f['零售价']),
-        s: pickText(f['散称价']),
-        pk: pickText(f['整箱|整包'])
-      };
-    })
-    .filter((row) => row.n);
-}
 
 /** 用口令派生密钥并做 AES-256-GCM 加密，口令不落盘明文数据 */
 export function encryptSnapshot(rows, passcode) {

@@ -14,6 +14,7 @@
     "secrets:upload": "node scripts/sync-secrets.mjs && bash .gh-secrets-upload.sh"
   },
   "devDependencies": {
-    "pinyin-pro": "^3.29.5"
+    "pinyin-pro": "^3.29.5",
+    "wrangler": "^4.0.0"
   }
 }

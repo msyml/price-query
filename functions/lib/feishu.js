@@ -67,10 +67,18 @@ export async function listRecords(env) {
   return items;
 }
 
-/** 读取字段定义，用于取「单选」字段的可选值 */
+/** 分页读取字段定义，用于取「单选」字段的可选值（字段数超出一页时同样翻页） */
 export async function listFields(env) {
-  const data = await call(env, fieldsPath(env), { query: { page_size: 100 } });
-  return data.items ?? [];
+  const items = [];
+  let pageToken = '';
+  do {
+    const data = await call(env, fieldsPath(env), {
+      query: { page_size: 100, page_token: pageToken }
+    });
+    items.push(...(data.items ?? []));
+    pageToken = data.page_token ?? '';
+  } while (pageToken);
+  return items;
 }
 
 export async function createRecord(env, fields) {

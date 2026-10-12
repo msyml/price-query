@@ -7,7 +7,8 @@ export async function onRequestPut({ request, env, params }) {
   if (!(await authorize(request, env))) return json({ error: '口令不正确' }, 401);
   try {
     const payload = validateInput(await readJson(request));
-    const record = await updateRecord(env, params.id, toFields(payload));
+    // 编辑时允许清空品牌：显式写 null，避免旧品牌残留而与拼音简称矛盾
+    const record = await updateRecord(env, params.id, toFields(payload, { clearBrand: true }));
     return json({ ok: true, row: toRow(record) });
   } catch (err) {
     return handleError(err);

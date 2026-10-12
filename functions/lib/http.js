@@ -17,8 +17,6 @@ export const json = (data, status = 200) =>
     }
   });
 
-/** 校验请求头里的口令，与 Pages 环境变量 ACCESS_PASSCODE 比对（定时比较） */
-
 /**
  * 取当前生效的访问口令。
  *
@@ -57,10 +55,19 @@ export const readJson = async (request) => {
   }
 };
 
+/**
+ * 统一错误响应。
+ *
+ * 两种错误区别对待：
+ * - HttpError：我们自己抛的校验错误、以及飞书接口返回的业务错误（502）。
+ *   这些是给人看的排障信息（例如 91403 权限不足），原样返回。
+ * - 其余异常：非预期故障，可能带有内部细节（栈信息、上游报错原文）。
+ *   只对外返回笼统文案，**详情只写服务端日志**，避免把内部结构泄露给客户端。
+ */
 export function handleError(err) {
   if (err instanceof HttpError) return json({ error: err.message }, err.status);
   console.error('未处理异常:', err);
-  return json({ error: `服务器错误：${err?.message ?? '未知'}` }, 500);
+  return json({ error: '服务器错误，请稍后重试' }, 500);
 }
 
 /* ---------- 短时间高频请求限制 ---------- */

@@ -30,7 +30,8 @@ Cloudflare Pages Functions（functions/，后端在这里）
 - **口令鉴权**：页面访问口令即 API 口令（请求头 `x-passcode`），后端优先取 Cloudflare KV（绑定 `CONFIG` 的 `passcode` 键），未配置时回退到环境变量 `ACCESS_PASSCODE`。
 - **远程改口令**：口令存在 Cloudflare KV，改口令只需在控制台改 KV 里的 `passcode` 值，**无需重新部署**（详见「远程改口令」）。
 - **限流**：`functions/_middleware.js` 对所有 `/api/*` 做滑动窗口限流（默认每来源 60 次/分钟），超限返回 `429`。用量低时只用于挡住异常高频请求。
-- **拼音规则统一**：新增/编辑时用 `pinyin-pro` 按「品牌首字母 + 商品名首字母」生成 `拼音简称`，与历史数据完全一致。
+- **拼音规则统一**：新增/编辑时用 `pinyin-pro` 按「品牌首字母 + 商品名首字母」生成 `拼音简称`，与历史数据完全一致。该规则实现在 `shared/pricing.js`，**页面接口与快照脚本共用同一份代码**，不会出现两边规则漂移。
+- **编辑可清空品牌**：编辑时把品牌清空会真正移除记录上的品牌（显式写 `null`），拼音简称同步去掉品牌前缀，两者始终一致；新增时品牌留空则不写该字段，避免在单选字段里建出空的品牌选项。
 - **旧快照流水线保留**：`scripts/sync.mjs` 仍会生成 `public/data/snapshot.enc.json`（PBKDF2 + AES-256-GCM 加密）作为离线备份，页面已不再使用它。
 - **写权限提醒**：访问口令同时就是写入口令，拿到口令的人都能新增/编辑表格数据。口令一旦外泄，价目表可被篡改；建议改成足够强的口令。
 
@@ -277,13 +278,15 @@ ACCESS_PASSCODE=...
 │  ├─ app.js                # 口令解锁 + 列表 / 筛选 + 添加 / 编辑
 │  ├─ style.css
 │  └─ data/snapshot.enc.json  # 旧流水线产物（不入库，页面已不用）
+├─ shared/
+│  └─ pricing.js            # 纯逻辑：字段映射 + 拼音 + 数值归一化（functions 与 scripts 共用）
 ├─ functions/               # Cloudflare Pages Functions（后端）
 │  ├─ _middleware.js        # /api/* 限流（滑动窗口）
 │  ├─ api/records.js        # GET 列表 / POST 新增
 │  ├─ api/records/[id].js   # PUT 编辑
 │  └─ lib/
 │     ├─ feishu.js          # token + 记录/字段读写
-│     ├─ normalize.js       # 字段映射 + 拼音 + 校验
+│     ├─ normalize.js       # 校验 + 写入组装（纯逻辑转引 shared/pricing.js）
 │     └─ http.js            # 鉴权 + 限流 + 统一响应
 ├─ scripts/                 # 旧的静态快照流水线（备份用）
 │  ├─ sync.mjs              # 拉数据 → 加密 → 落盘
@@ -291,7 +294,7 @@ ACCESS_PASSCODE=...
 │  ├─ sync-secrets.mjs      # .env → GitHub Secrets/Variables 同步
 │  └─ lib/
 │     ├─ feishu.mjs
-│     └─ snapshot.mjs
+│     └─ snapshot.mjs       # 仅加密与落盘，归一化复用 shared/pricing.js
 ├─ .github/workflows/deploy.yml
 └─ wrangler.toml
 ```
